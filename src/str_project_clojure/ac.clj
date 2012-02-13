@@ -148,25 +148,18 @@
     (fn [A B]
       (let [^objects d (make-array clojure.lang.Delay
                                    (inc (count A))
-                                   (inc (count B)))]
-        (aset d 0 0 (delay (double 0)))
-        (loop [x 0 y 1
-               a-state (states a-root A)
-               b-state (next (cycle (states b-root B)))]
-          (cond (> x (count A))
-                (force (aget d (count A) (count B)))
-                (> y (count B))
-                (recur (inc x) 0
-                       (next a-state)
-                       b-state)
-                :else
-                (let [^"[Lclojure.lang.Delay;" col (aget d x)]
-                  (aset col y
-                        (delay
-                         (double (min-cost d x y
-                                           rules
-                                           (first a-state)
-                                           (first b-state)))))
-                  (recur x (inc y)
-                         a-state
-                         (next b-state)))))))))
+                                   (inc (count B)))
+            a-states (states a-root A)
+            b-states (states b-root B)]
+        (doseq [x (range (count A))
+                y (range (count B))]
+          (let [^"[Lclojure.lang.Delay;" col (aget d x)]
+            (aset col y
+                  (if (= x y 0)
+                    (delay (double 0))
+                    (delay
+                     (double (min-cost d x y
+                                       rules
+                                       (nth a-states x)
+                                       (nth b-states y))))))))
+        (force (aget d (count A) (count B)))))))
