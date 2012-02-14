@@ -1,6 +1,5 @@
 (ns str-project-clojure.ac
-  (:require [clojure.string]
-            [clojure.set]))
+  (:require [clojure.set :as set]))
 
 (defrecord Rule [from to cost])
 
@@ -133,16 +132,18 @@
        (:cost rule))))
 
 (defn min-cost
-  [d x y rules a-state b-state]
-  (reduce min
-          Double/POSITIVE_INFINITY
-          (map (partial cost d x y)
-               (for [i (clojure.set/intersection (output a-state)
-                                                 (output b-state))]
-                 (rules i)))))
+  [d ^String A ^String B rules]
+  (let [x (count A)
+        y (count B)]
+    (reduce min
+            (if (= (last A) (last B))
+              (let [^"[Lclojure.lang.Delay;" col (aget d (dec x))]
+                (force (aget col (dec y))))
+              Double/POSITIVE_INFINITY)
+            (map (partial cost d x y) rules))))
 
 (defn dyn-gen-edit
-  [rules]
+  [rules matches?]
   (let [a-root (fail-links! (make-ac (map :from rules)))
         b-root (fail-links! (make-ac (map :to rules)))]
     (fn [A B]
@@ -151,15 +152,28 @@
                                    (inc (count B)))
             a-states (states a-root A)
             b-states (states b-root B)]
-        (doseq [x (range (count A))
-                y (range (count B))]
+        (doseq [x (range (inc (count A)))
+                y (range (inc (count B)))
+                :let [a-state (nth a-states x)
+                      b-state (nth b-states y)
+                      rules (for [i (set/intersection (output a-state)
+                                                      (output b-state))]
+                              (nth rules i))]]
           (let [^"[Lclojure.lang.Delay;" col (aget d x)]
             (aset col y
-                  (if (= x y 0)
-                    (delay (double 0))
-                    (delay
-                     (double (min-cost d x y
-                                       rules
-                                       (nth a-states x)
-                                       (nth b-states y))))))))
-        (force (aget d (count A) (count B)))))))
+                  (cond (= x y 0)
+                        (delay (double 0))
+                        (and matches?
+                             (= y 0))
+                        (delay (double 0))
+                        :else
+                        (delay
+                         (double (min-cost d (subs A 0 x) (subs B 0 y) rules)))))))
+        (if matches?
+          (for [x (range (inc (count A)))
+                y (range (inc (count B)))
+                :when (and (= y (count B))
+                           (not= (force (aget d x y))
+                                 Double/POSITIVE_INFINITY))]
+            [(dec x) (force (aget d x y))])
+          (force (aget d (count A) (count B))))))))

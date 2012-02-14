@@ -1,0 +1,35 @@
+(ns str-project-clojure.test.performance
+  (:require [str-project-clojure.basic :as basic])
+  (:require [str-project-clojure.ac :as ac])
+  (:require [str-project-clojure.utils :as utils])
+  (:use criterium.core)
+  (:use [clojure.string :only [join]]))
+
+(let [a (join "" (repeat 100 "a"))
+      b (join "" (repeat 100 "b"))
+      rules [{:from "a" :to "b" :cost 1}]]
+  (quick-bench (basic/dyn-gen-edit rules a b))
+  (quick-bench ((ac/dyn-gen-edit rules false) a b)))
+
+(let [a (join "" (repeat 100 "a"))
+      b (join "" (repeat 100 "b"))
+      rules [{:from "c" :to "b" :cost 1}]]
+  (quick-bench (basic/dyn-gen-edit rules a b))
+  (quick-bench ((ac/dyn-gen-edit rules false) a b)))
+
+(let [a (join "" (repeat 1000 "a"))
+      b (join "" (repeat 1000 "b"))
+      rules [{:from (join "" (repeat 10 "a"))
+              :to (join "" (repeat 10 "b"))
+              :cost 1}]]
+  (quick-bench (basic/dyn-gen-edit rules a b))
+  (quick-bench ((ac/dyn-gen-edit rules false) a b)))
+
+(let [a (join "" (repeat 1000 "a"))
+      b (join "" (repeat 1000 "b"))
+      rules [{:from (join "" (repeat 10 "c"))
+              :to (join "" (repeat 10 "b"))
+              :cost 1}]]
+  (quick-bench (basic/dyn-gen-edit rules a b))
+  (quick-bench ((ac/dyn-gen-edit rules false) a b)))
+

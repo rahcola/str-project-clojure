@@ -14,9 +14,12 @@
     Double/POSITIVE_INFINITY))
 
 (defn min-cost
-  [d A B rules]
+  [d ^String A ^String B rules]
   (reduce min
-          Double/POSITIVE_INFINITY
+          (if (= (last A) (last B))
+            (let [^"[Lclojure.lang.Delay;" col (aget d (dec (count A)))]
+              (force (aget col (dec (count B)))))
+            Double/POSITIVE_INFINITY)
           (map (partial cost d A B) rules)))
 
 (defn dyn-gen-edit
