@@ -1,7 +1,38 @@
 (ns str-project-clojure.ac
-  (:require [clojure.set :as set]))
+  (:require [clojure.set :as set])
+  (:import java.util.BitSet))
 
 (defrecord Rule [from to cost])
+
+(defn make-bitset
+  []
+  (new java.util.BitSet))
+
+(defn bitset-set
+  [^java.util.BitSet a i]
+  (.set a i)
+  a)
+
+(defn bitset-union
+  [^java.util.BitSet a ^java.util.BitSet b]
+  (let [^java.util.BitSet result (.clone a)]
+    (.or result b)
+    result))
+
+(defn bitset-intersection
+  [^java.util.BitSet a ^java.util.BitSet b]
+  (let [^java.util.BitSet result (.clone a)]
+    (.and result b)
+    result))
+
+(defn bitset-map
+  [f ^java.util.BitSet set]
+  (loop [res []
+         i (.nextSetBit set 0)]
+    (if (< i 0)
+      res
+      (recur (conj res (f i))
+             (.nextSetBit set (inc i))))))
 
 (defprotocol ANode
   (push [this sym])
@@ -45,9 +76,9 @@
   (output [this]
     output)
   (add-output! [this x]
-    (if (set? x)
-      (set! output (clojure.set/union output x))
-      (set! output (conj output x)))
+    (if (isa? (class x) java.util.BitSet)
+      (.or output x)
+      (.set output x))
     this)
   (fail [this]
     fail)
@@ -68,7 +99,7 @@
 
 (defn make-node
   ([]
-     (Node. {} #{} nil false)))
+     (Node. {} (make-bitset) nil false)))
 
 (defn insert-word!
   [root [i word]]
@@ -123,30 +154,28 @@
           [root]
           word))
 
-(defn cost
-  [d x y rule]
-  (let [a (- x (count (:from rule)))
-        b (- y (count (:to rule)))]
-    (+ (let [^"[Lclojure.lang.Delay;" col (aget ^objects d a)]
-         (force (aget col b)))
-       (:cost rule))))
-
-(defn min-cost
-  [d ^String A ^String B rules]
-  (let [x (count A)
-        y (count B)]
-    (reduce min
-            (if (= (last A) (last B))
-              (let [^"[Lclojure.lang.Delay;" col (aget d (dec x))]
-                (force (aget col (dec y))))
-              Double/POSITIVE_INFINITY)
-            (map (partial cost d x y) rules))))
-
 (defn dyn-gen-edit
   [rules matches?]
-  (let [a-root (fail-links! (make-ac (map :from rules)))
+  (let [rules (vec rules)
+        a-root (fail-links! (make-ac (map :from rules)))
         b-root (fail-links! (make-ac (map :to rules)))]
-    (fn [A B]
+    (fn [^String A ^String B]
+      (defn cost
+        [^objects d x y rule]
+        (let [a (- x (count (:from rule)))
+              b (- y (count (:to rule)))]
+          (+ (let [^"[Lclojure.lang.Delay;" col (aget d a)]
+               (force (aget col b)))
+             (:cost rule))))
+      (defn min-cost
+        [^objects d x y rules]
+        (reduce min
+                (if (and (> x 0) (> y 0)
+                         (= (nth A (dec x)) (nth B (dec y))))
+                  (let [^"[Lclojure.lang.Delay;" col (aget d (dec x))]
+                    (force (aget col (dec y))))
+                  Double/POSITIVE_INFINITY)
+                (map (partial cost d x y) rules)))
       (let [^objects d (make-array clojure.lang.Delay
                                    (inc (count A))
                                    (inc (count B)))
@@ -156,19 +185,18 @@
                 y (range (inc (count B)))
                 :let [a-state (nth a-states x)
                       b-state (nth b-states y)
-                      rules (for [i (set/intersection (output a-state)
-                                                      (output b-state))]
-                              (nth rules i))]]
+                      rules (bitset-map
+                             (fn [i] (nth rules i))
+                             (bitset-intersection (output a-state)
+                                                  (output b-state)))]]
           (let [^"[Lclojure.lang.Delay;" col (aget d x)]
             (aset col y
-                  (cond (= x y 0)
-                        (delay (double 0))
-                        (and matches?
-                             (= y 0))
-                        (delay (double 0))
-                        :else
-                        (delay
-                         (double (min-cost d (subs A 0 x) (subs B 0 y) rules)))))))
+                  (if (and (= y 0)
+                           (or matches?
+                               (= x 0)))
+                    (delay (double 0))
+                    (delay
+                     (double (min-cost d x y rules)))))))
         (if matches?
           (for [x (range (inc (count A)))
                 y (range (inc (count B)))
