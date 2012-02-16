@@ -1,5 +1,6 @@
 (ns str-project-clojure.ac
   (:require [clojure.set :as set])
+  (:require [str-project-clojure.utils :as utils])
   (:import java.util.BitSet))
 
 (defrecord Rule [from to cost])
@@ -25,13 +26,13 @@
     (.and result b)
     result))
 
-(defn bitset-map
-  [f ^java.util.BitSet set]
-  (loop [res []
+(defn bitset-reduce
+  [f acc ^java.util.BitSet set]
+  (loop [acc acc
          i (.nextSetBit set 0)]
     (if (< i 0)
-      res
-      (recur (conj res (f i))
+      acc
+      (recur (f acc i)
              (.nextSetBit set (inc i))))))
 
 (defprotocol ANode
@@ -154,54 +155,73 @@
           [root]
           word))
 
+(defn cost
+  [^objects d x y rule]
+  (let [x (int x)
+        y (int y)
+        a (- x (.length ^String (:from rule)))
+        b (- y (.length ^String (:to rule)))]
+    (+ (let [^"[Lclojure.lang.Delay;" col (aget d a)]
+         (force (aget col b)))
+       (:cost rule))))
+
+(defn collect-matches
+  [^objects d]
+  (let [w (alength d)
+        h (alength (aget d 0))]
+    (for [x (range w)
+          y (range h)
+          :when (and (= y (dec h))
+                     (not= (let [^"[Lclojure.lang.Delay;" col (aget d x)]
+                             (force (aget col y)))
+                           Double/POSITIVE_INFINITY))]
+      [(dec x)
+       (let [^"[Lclojure.lang.Delay;" col (aget d x)]
+         (force (aget col y)))])))
+
 (defn dyn-gen-edit
   [rules matches?]
   (let [rules (vec rules)
         a-root (fail-links! (make-ac (map :from rules)))
         b-root (fail-links! (make-ac (map :to rules)))]
     (fn [^String A ^String B]
-      (defn cost
-        [^objects d x y rule]
-        (let [a (- x (count (:from rule)))
-              b (- y (count (:to rule)))]
-          (+ (let [^"[Lclojure.lang.Delay;" col (aget d a)]
-               (force (aget col b)))
-             (:cost rule))))
       (defn min-cost
-        [^objects d x y rules]
-        (reduce min
-                (if (and (> x 0) (> y 0)
-                         (= (nth A (dec x)) (nth B (dec y))))
-                  (let [^"[Lclojure.lang.Delay;" col (aget d (dec x))]
-                    (force (aget col (dec y))))
-                  Double/POSITIVE_INFINITY)
-                (map (partial cost d x y) rules)))
-      (let [^objects d (make-array clojure.lang.Delay
-                                   (inc (count A))
-                                   (inc (count B)))
-            a-states (states a-root A)
-            b-states (states b-root B)]
-        (doseq [x (range (inc (count A)))
-                y (range (inc (count B)))
-                :let [a-state (nth a-states x)
-                      b-state (nth b-states y)
-                      rules (bitset-map
-                             (fn [i] (nth rules i))
-                             (bitset-intersection (output a-state)
-                                                  (output b-state)))]]
+        [^objects d x y intersection]
+        (bitset-reduce (fn [current-min i]
+                         (min current-min
+                              (cost d x y (rules i))))
+                       (if (and (> x 0) (> y 0)
+                                (= (.charAt A (dec x)) (.charAt B (dec y))))
+                         (let [^"[Lclojure.lang.Delay;" col (aget d (dec x))]
+                           (force (aget col (dec y))))
+                         Double/POSITIVE_INFINITY)
+                       intersection))
+      (let [w (inc (.length A))
+            h (inc (.length B))
+            ^objects d (make-array clojure.lang.Delay w h)]
+        (loop [x 0 y 0
+               a-state a-root
+               b-state b-root]
           (let [^"[Lclojure.lang.Delay;" col (aget d x)]
             (aset col y
-                  (if (and (= y 0)
-                           (or matches?
-                               (= x 0)))
-                    (delay (double 0))
-                    (delay
-                     (double (min-cost d x y rules)))))))
-        (if matches?
-          (for [x (range (inc (count A)))
-                y (range (inc (count B)))
-                :when (and (= y (count B))
-                           (not= (force (aget d x y))
-                                 Double/POSITIVE_INFINITY))]
-            [(dec x) (force (aget d x y))])
-          (force (aget d (count A) (count B))))))))
+                  (delay
+                   (if (and (= y 0) (or matches? (= x 0)))
+                     0
+                     (min-cost d x y
+                               (bitset-intersection (output a-state)
+                                                    (output b-state)))))))
+          (cond (and (= x (dec w))
+                     (= y (dec h)))
+                (if matches?
+                  (collect-matches d)
+                  (force (aget d (.length A) (.length B))))
+                (= y (dec h))
+                (recur (inc x)
+                       0
+                       (push-f a-state (.charAt A x))
+                       b-root)
+                :else
+                (recur x
+                       (inc y)
+                       a-state
+                       (push-f b-state (.charAt B y)))))))))

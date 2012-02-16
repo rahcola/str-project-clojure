@@ -3,13 +3,15 @@
 (defrecord Rule [from to cost])
 
 (defn dyn-gen-edit
-  [rules A B matches?]
+  [rules ^String A ^String B matches?]
   (defn cost
     [^objects d x y rule]
-    (if (and (.endsWith (subs A 0 x) (:from rule))
-             (.endsWith (subs B 0 y) (:to rule)))
-      (let [a (- x (count (:from rule)))
-            b (- y (count (:to rule)))]
+    (if (and (.endsWith ^String (subs A 0 x) ^String (:from rule))
+             (.endsWith ^String (subs B 0 y) ^String (:to rule)))
+      (let [x (int x)
+            y (int y)
+            a (- x (.length ^String (:from rule)))
+            b (- y (.length ^String (:to rule)))]
         (+ (let [^"[Lclojure.lang.Delay;" col (aget d a)]
              (force (aget col b)))
            (:cost rule)))
@@ -18,7 +20,7 @@
     [^objects d x y]
     (reduce min
             (if (and (> x 0) (> y 0)
-                     (= (nth A (dec x)) (nth B (dec y))))
+                     (= (.charAt A (dec x)) (.charAt B (dec y))))
               (let [^"[Lclojure.lang.Delay;" col (aget d (dec x))]
                 (force (aget col (dec y))))
               Double/POSITIVE_INFINITY)
@@ -30,12 +32,10 @@
             y (range (inc (count B)))]
       (let [^"[Lclojure.lang.Delay;" col (aget d x)]
         (aset col y
-              (if (and (= y 0)
-                       (or matches?
-                           (= x 0)))
-                (delay (double 0))
-                (delay
-                 (double (min-cost d x y)))))))
+              (delay
+               (if (and (= y 0) (or matches? (= x 0)))
+                 0
+                 (min-cost d x y))))))
     (if matches?
       (for [x (range (inc (count A)))
             y (range (inc (count B)))

@@ -25,7 +25,7 @@
               :to (join "" (repeat 10 "b"))
               :cost 1}]
       g (ac/dyn-gen-edit rules false)]
-  (quick-bench (basic/dyn-gen-edit rules a b false))
+  ;(quick-bench (basic/dyn-gen-edit rules a b false))
   (quick-bench (g a b)))
 
 (let [a (join "" (repeat 1000 "a"))

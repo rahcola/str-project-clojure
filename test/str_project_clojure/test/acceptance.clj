@@ -22,8 +22,8 @@
                    ["ab" "c" 1]
                    ["ca" "d" 1]
                    ["bc" "cd" 1]])]
-   ((ac/dyn-gen-edit rules false) a b) => (double 3)
-   (basic/dyn-gen-edit rules a b false) => (double 3)))
+   ((ac/dyn-gen-edit rules false) a b) => 3
+   (basic/dyn-gen-edit rules a b false) => 3))
 
 (fact
  (let [a "abcabc"
@@ -33,9 +33,9 @@
                    ["ab" "c" 1]
                    ["ca" "d" 1]
                    ["bc" "cd" 1]])
-       result (list [2 (double 1)]
-                    [3 (double 2)]
-                    [5 (double 1)])]
+       result (list [2  1]
+                    [3  2]
+                    [5  1])]
    ((ac/dyn-gen-edit rules true) a b) => result
    (basic/dyn-gen-edit rules a b true) => result))
 
@@ -47,8 +47,8 @@
                    ["e" "u" 1]
                    ["l" "p" 1]
                    ["m" "p" 1]])]
-   ((ac/dyn-gen-edit rules false) a b) => (double 4)
-   (basic/dyn-gen-edit rules a b false) => (double 4)))
+   ((ac/dyn-gen-edit rules false) a b) => 4
+   (basic/dyn-gen-edit rules a b false) => 4))
 
 (fact
  (let [a "helmi"
@@ -59,5 +59,5 @@
                    ["l" "p" 1]
                    ["m" "p" 1]
                    ["i" "i" -1]])]
-   ((ac/dyn-gen-edit rules false) a b) => (double 3)
-   (basic/dyn-gen-edit rules a b false) => (double 3)))
+   ((ac/dyn-gen-edit rules false) a b) => 3
+   (basic/dyn-gen-edit rules a b false) => 3))
