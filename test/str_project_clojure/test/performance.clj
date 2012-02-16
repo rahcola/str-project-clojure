@@ -5,53 +5,25 @@
   (:use criterium.core)
   (:use [clojure.string :only [join]]))
 
-(let [a (join "" (repeat 100 "a"))
-      b (join "" (repeat 100 "b"))
-      rules [{:from "a" :to "b" :cost 1}]
-      g (ac/dyn-gen-edit rules false)]
-  (quick-bench (basic/dyn-gen-edit rules a b false))
-  (quick-bench (g a b)))
+(defn mean-bench
+  [f]
+  (first (:mean (quick-benchmark (f) :reduce-with (constantly nil)))))
 
-(let [a (join "" (repeat 100 "a"))
-      b (join "" (repeat 100 "b"))
-      rules [{:from "c" :to "b" :cost 1}]
-      g (ac/dyn-gen-edit rules false)]
-  (quick-bench (basic/dyn-gen-edit rules a b false))
-  (quick-bench (g a b)))
+(defn csv-string
+  [results]
+  (join "\n"
+        (map (fn [result]
+               (str (first result) \tab (second result)))
+             results)))
 
-(let [a (join "" (repeat 1000 "a"))
-      b (join "" (repeat 1000 "b"))
-      rules [{:from (join "" (repeat 10 "a"))
-              :to (join "" (repeat 10 "b"))
-              :cost 1}]
-      g (ac/dyn-gen-edit rules false)]
-  ;(quick-bench (basic/dyn-gen-edit rules a b false))
-  (quick-bench (g a b)))
-
-(let [a (join "" (repeat 1000 "a"))
-      b (join "" (repeat 1000 "b"))
-      rules [{:from (join "" (repeat 10 "c"))
-              :to (join "" (repeat 10 "b"))
-              :cost 1}]
-      g (ac/dyn-gen-edit rules false)]
-  (quick-bench (basic/dyn-gen-edit rules a b false))
-  (quick-bench (g a b)))
-
-(let [pattern "TCGTTCAATAAAAGTCCTCAAGAGGTTGGTTAATACGCATGTTTAATAG"
-      rules (map (fn [f t c] {:from f :to t :cost c})
-                 (utils/substrings pattern)
-                 (map utils/inversion (utils/substrings pattern))
-                 (repeat 1))
-      block-len (* (count pattern) 2)
-      overlap (count pattern)]
-  (utils/do-first-line
-   "resources/dna.50MB"
-   (fn [line]
-     (let [text (utils/overlap-string-blocks line block-len overlap)
-           g (ac/dyn-gen-edit rules true)]
-       (println "Naive:")
-       (quick-bench (last (map #(basic/dyn-gen-edit rules % pattern true)
-                               (take 100 text))))
-       (println "AC:")
-       (quick-bench (last (map #(g % pattern)
-                               (take 100 text))))))))
+(def ac-dna-inversions
+  (map (fn [l]
+         (let [pattern (utils/random-dna-string l)
+               rules (map #({:from %1 :to %2 :cost %3})
+                          (utils/substrings pattern)
+                          (map utils/inversion (utils/substrings pattern))
+                          (repeat 1))
+               ac (ac/dyn-gen-edit rules :full-match false)])
+         [l
+          (mean-bench (fn [] (ac text pattern)))])
+       (range 10 100 10)))

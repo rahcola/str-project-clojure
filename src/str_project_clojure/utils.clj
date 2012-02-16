@@ -1,5 +1,6 @@
 (ns str-project-clojure.utils
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:require [clojure.string :as string]))
 
 (defn do-lines
   [path func]
@@ -35,8 +36,34 @@
 
 (defn random-nuc
   []
-  (char (+ (rand-int 4) 65)))
+  ({0 \A
+    1 \C
+    2 \T
+    3 \G} (rand-int 4)))
+
+(defn random-dna-string
+  [l]
+  (string/join "" (for [i (range l)] (random-nuc))))
 
 (defn overlap-string-blocks
   [s block-len overlap]
   (map #(apply str %) (partition block-len overlap [] s)))
+
+(defn d-get [^objects d x y]
+  (let [^"[Lclojure.lang.Delay;" col (aget d x)]
+    (aget col y)))
+
+(defn d-set [^objects d x y val]
+  (let [^"[Lclojure.lang.Delay;" col (aget d x)]
+    (aset col y val)))
+
+(defn collect-matches
+  [^objects d]
+  (let [w (alength d)
+        h (alength (aget d 0))]
+    (for [x (range w)
+          y (range h)
+          :when (and (= y (dec h))
+                     (not= (force (d-get d x y))
+                           Double/POSITIVE_INFINITY))]
+      [(dec x) (force (d-get d x y))])))
