@@ -1,9 +1,14 @@
 (ns str-project-clojure.basic
+  "General edit distance calculation using a simple dynamic
+   programming algorithm."
   (:require [str-project-clojure.utils :as utils]))
 
-(defrecord Rule [from to cost])
-
 (defn dyn-gen-edit
+  "The dynamic programming method of tabulation is used, in conjuction
+  with delaying the computation of the values in every cell of the
+  matrix. The computations are forced by the function cost when the
+  actual values are neede."
+
   [rules & {:keys [full-match]
             :or {full-match true}}]
   (fn [^String A ^String B]

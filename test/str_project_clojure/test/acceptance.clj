@@ -8,14 +8,14 @@
 (fact
  (let [words ["she" "he" "his" "hers"]
        root (ac/fail-links! (ac/make-ac words))]
-   (ac/output (reduce ac/push-f root "he")) => (conj (intset/int-set) 1)
-   (ac/output (reduce ac/push-f root "hers")) => (conj (intset/int-set) 3)
-   (ac/output (reduce ac/push-f root "his")) => (conj (intset/int-set) 2)
-   (ac/output (reduce ac/push-f root "she")) => (-> (intset/int-set)
+   (.set (ac/output (reduce ac/push-f root "he"))) => (.set (conj (intset/int-set) 1))
+   (.set (ac/output (reduce ac/push-f root "hers"))) => (.set (conj (intset/int-set) 3))
+   (.set (ac/output (reduce ac/push-f root "his"))) => (.set (conj (intset/int-set) 2))
+   (.set (ac/output (reduce ac/push-f root "she"))) => (.set (-> (intset/int-set)
                                                     (conj 0)
-                                                    (conj 1))))
+                                                    (conj 1)))))
 
-(fact
+(facts "basic sanity check"
  (let [a "abcabc"
        b "cdcd"
        rules (map #(zipmap [:from :to :cost] %)
@@ -26,7 +26,9 @@
    ((ac/dyn-gen-edit rules) a b) => 3
    ((basic/dyn-gen-edit rules) a b) => 3))
 
-(fact
+(facts "setting :full-match to false should give a sequence of pairs
+       [a b] where a is the position of the end of the match in a and
+       b is the cost"
  (let [a "abcabc"
        b "cd"
        rules (map #(zipmap [:from :to :cost] %)
@@ -40,7 +42,7 @@
    ((ac/dyn-gen-edit rules :full-match false) a b) => result
    ((basic/dyn-gen-edit rules :full-match false) a b) => result))
 
-(fact
+(facts "There should be no cost for symbols that already match"
  (let [a "helmi"
        b "kuppi"
        rules (map #(zipmap [:from :to :cost] %)
@@ -51,7 +53,7 @@
    ((ac/dyn-gen-edit rules) a b) => 4
    ((basic/dyn-gen-edit rules) a b) => 4))
 
-(fact
+(facts "test for negative costs"
  (let [a "helmi"
        b "kuppi"
        rules (map #(zipmap [:from :to :cost] %)

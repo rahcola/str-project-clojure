@@ -1,4 +1,7 @@
 (ns str-project-clojure.intset
+  "Bit vector implementation for a persistent set of integers using
+   java.util.BitSet from the standard library. Bit vector offeres fast
+   intersection and union operations."
   (:import java.util.BitSet))
 
 (defprotocol AIntSet

@@ -3,12 +3,14 @@
   (:require [clojure.string :as string]))
 
 (defn do-lines
+  "Call func for every line of the file in path."
   [path func]
   (with-open [rdr (io/reader path)]
     (doseq [line (line-seq rdr)]
       (func line))))
 
 (defn do-first-line
+  "Call func for the first line of the file in path."
   [path func]
   (with-open [rdr (io/reader path)]
     (func (first (line-seq rdr)))))
@@ -23,6 +25,7 @@
        1000000000.0)))
 
 (defn substrings
+  "Return contiguous subsequences of s."
   [^String s]
   (let [l (count s)]
     (for [start (range l)
@@ -30,6 +33,7 @@
       (.substring s start end))))
 
 (defn inversion
+  "Return the inversion of dna string."
   [^String dna]
   (apply str
          (map {\A \C \C \A \G \T \T \G} (reverse dna))))
@@ -45,7 +49,7 @@
   [l]
   (string/join "" (for [i (range l)] (random-nuc))))
 
-(defn overlap-string-blocks
+(defn overlaping-string-blocks
   [s block-len overlap]
   (map #(apply str %) (partition block-len overlap [] s)))
 
