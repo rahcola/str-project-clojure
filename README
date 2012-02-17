@@ -1,0 +1,5 @@
+./run_tests.sh run the test in test/str_project_clojure/test/acceptance.clj
+
+./run_bench.sh runs the benchmarks in test/str_project_clojure/test/performance.clj
+The output can be found in resources.
+BEWARE, these take a long time to run.
