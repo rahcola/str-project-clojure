@@ -4,16 +4,23 @@
 
 (defn do-lines
   "Call func for every line of the file in path."
-  [path func]
+  [path f]
   (with-open [rdr (io/reader path)]
     (doseq [line (line-seq rdr)]
-      (func line))))
+      (f line))))
+
+(defn do-words
+  [path f]
+  (with-open [rdr (io/reader path)]
+    (doseq [line (line-seq rdr)
+            word (string/split line #"\W+")]
+      (f word))))
 
 (defn do-first-line
   "Call func for the first line of the file in path."
-  [path func]
+  [path f]
   (with-open [rdr (io/reader path)]
-    (func (first (line-seq rdr)))))
+    (f (first (line-seq rdr)))))
 
 (defn avg-time-sec
   [fn iter]
