@@ -58,7 +58,7 @@
                (mean-bench (fn [] (basic text pattern)))]))
           (range 5 200 5)))))
 
-(spit "resources/basic_dna_inversions" (csv-string basic-dna-inversions))
+(spit "resources/basic_dna_inversions.csv" (csv-string basic-dna-inversions))
 
 (def basic-long-rules
   (let [a (string/join "" (repeat 200 \a))
