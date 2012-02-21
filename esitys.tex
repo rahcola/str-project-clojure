@@ -1,0 +1,182 @@
+\documentclass[english,t,12pt,pdftex,mathserif]{beamer}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{babel}
+\usepackage{helvet}
+\usepackage{times}
+\usepackage{courier}
+\usepackage{amsmath}
+\usepackage{mathptmx}
+\usepackage{graphicx}
+\usepackage{color}
+
+\hypersetup{pdfstartview={FitH}}
+
+\usetheme{default}
+\usecolortheme{beaver}
+
+\newcommand\kuva[2]{\includegraphics[scale=#1]{#2}}
+
+\newcommand\kuvasivu[4]{
+  \begin{minipage}[t]{#1\linewidth}
+    #4
+  \end{minipage}
+  \raisebox{-\height}[0pt][0pt]{
+    \includegraphics[width=#2\linewidth]{#3}
+  }
+}
+
+\newcommand\blue[1]{%
+  \textcolor{blue}{#1}%
+}
+
+\newcommand\red[1]{%
+  \textcolor{red}{#1}%
+}
+
+\newcommand\green[1]{%
+  \textcolor{green}{#1}%
+}
+
+\title{Speeding up generalized edit distance calculation using
+  Aho-Corasick automaton}
+
+\author{Jani Rahkola}
+\institute{University of Helsinki, Department of Computer Science}
+\date{\today}
+
+\begin{document}
+
+\selectlanguage{english}
+
+\frame{\titlepage}
+
+\frame{
+  \frametitle{Generalized edit distance (g.e.d.)}
+  \framesubtitle{}
+
+  \begin{itemize}
+  \item The minimal cost of turning string $A$ to string $B$ using
+    predefined rules
+
+  \item A rule is a 3-tuple $(\alpha, \beta, c)$ which states that
+    turning substring $\alpha$ to substring $\beta$ has a cost of c
+
+  \item In my implementation leaving be symbols that already match has
+    a cost of 0
+  \end{itemize}
+}
+
+\frame{
+  \frametitle{Algorithm}
+
+  \begin{itemize}
+  \item The dynamic programming algorithm known for calculating en
+    edit distance with unit costs can be generalized for the
+    generalized edit distance
+
+  \item We keep a matrix of $|A|+1 \times |B|+1$ and calculate the
+    g.e.d. for every $(i, j)$
+
+  \item That is, the value in $(i, j)$ will be the g.e.d. between
+    substrings $A[:i]$ and $B[:j]$ (with exclusive indexing)
+
+  \item The evaluation can be done in row or column wise order
+
+  \item But my implementation actually stores just promises of
+    computations in the matrix
+  \end{itemize}
+}
+
+\frame{
+  \frametitle{g.e.d. $(i, j)$}
+
+  \begin{itemize}
+  \item For every rule that $\alpha$ is a suffix of $A[:i]$ and
+    $\beta$ is a suffix of $B[:j]$ we add the cost of the rule to the
+    cost of turning the remaining prefix of $A[:i]$ to the remaining
+    prefix of $B[:j]$
+
+  \item The minimum of the sums is the g.e.d. $(i, j)$
+
+  \item The difference between the basic and Aho-Corasick augmented
+    algorithms is the way that they use to determine the applicable
+    set of rules for every $(i, j)$
+  \end{itemize}
+}
+
+\frame{
+  \frametitle{The basic algorithm}
+
+  \begin{itemize}
+  \item Runs in $O(nm||rules||)$ time where
+    $||ruless|| = \sum_{r \in rules} (|r.\alpha| + |r.\beta|)$
+
+  \item At every $(i, j)$ the algorithm goes over the whole set of
+    rules and does a naive check whether $\alpha$ is a suffix of
+    $A[:i]$ and $\beta$ is a suffix of $B[:j]$
+  \end{itemize}
+}
+
+\frame[shrink]{
+  \frametitle{The Aho-Corasick augmented algorithm}
+  \begin{itemize}
+  \item Runs in $O(nm|rules|)$ time
+
+  \item We build two Aho-Corasick automatons, one for every $\alpha$
+    and one for every $\beta$ in rules
+
+  \item Every state of the automaton has a set of indexes to those
+    rules whose $\alpha$ (or $\beta$) is the suffix of the string red
+    by the automaton
+
+  \item We make sure that when evaluating g.e.d. $(i, j)$ we have
+    pushed $A[:i]$ and $B[:j]$ to the respective automatons
+
+  \item Then the applicable set of rules is the intersection of the
+    automaton states' outputs
+
+  \item The output sets are implemented as Java BitSet which has an
+    $O(n/w)$ intersection
+
+  \item The construction of the automatons adds an $O(||rules||)$ to
+    the overall time, but has to be done only once for a constant rule
+    set
+  \end{itemize}
+}
+
+\frame[plain]{
+  \frametitle{Benchmarking}
+  Matching a DNA pattern to a reference while allowing non-overlapping inversions
+  \kuva{.5}{chart_1.png}
+}
+
+\frame[plain]{
+  \frametitle{Benchmarking}
+  A linearly growing rule that matches at every position
+  \kuva{.5}{chart_2.png}
+}
+
+\frame[plain]{
+  \frametitle{Benchmarking}
+  A linearly growing rule in which $\beta$ has a mismatch at the last
+  symbol checked by the naive suffix check
+  \kuva{.5}{chart_3.png}
+}
+
+\frame{
+  \frametitle{Applications}
+  \begin{itemize}
+  \item DNA inversion problem has faster algorithms, but this approach
+    allows for weighting the different inversions
+
+  \item Any other problem of edit distance, that needs a huge set of
+    weighted rules, maybe given by a machine learning system
+
+  \item Generalized edit distance has been used as an alternative
+    for traditional spell checkers
+  \end{itemize}
+}
+
+\end{document}
